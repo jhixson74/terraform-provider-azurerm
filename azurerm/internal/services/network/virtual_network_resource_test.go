@@ -49,6 +49,23 @@ func TestAccVirtualNetwork_complete(t *testing.T) {
 	})
 }
 
+func TestAccVirtualNetwork_basic_addressPrefixes(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_virtual_network", "test")
+	r := VirtualNetworkResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.basicWithAddressPrefixes(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("subnet.#").HasValue("1"),
+				check.That(data.ResourceName).Key("subnet.1472110187.id").Exists(),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccVirtualNetwork_basicUpdated(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_virtual_network", "test")
 	r := VirtualNetworkResource{}
@@ -294,6 +311,25 @@ resource "azurerm_virtual_network" "test" {
   subnet {
     name           = "subnet1"
     address_prefix = "10.0.1.0/24"
+  }
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+}
+
+func (VirtualNetworkResource) basicWithAddressPrefixes(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-n-%d"
+  location = "%s"
+}
+resource "azurerm_virtual_network" "test" {
+  name                = "acctestvirtnet%d"
+  address_space       = ["10.0.0.0/16"]
+  location            = "${azurerm_resource_group.test.location}"
+  resource_group_name = "${azurerm_resource_group.test.name}"
+  subnet {
+    name             = "subnet1"
+    address_prefixes = ["10.0.1.0/24", "10.0.2.0/24"]
   }
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)

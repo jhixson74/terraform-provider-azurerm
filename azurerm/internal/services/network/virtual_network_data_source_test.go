@@ -33,6 +33,26 @@ func TestAccDataSourceVirtualNetwork_basic(t *testing.T) {
 	})
 }
 
+func TestAccDataSourceVirtualNetwork_basic_addressPrefixes(t *testing.T) {
+	data := acceptance.BuildTestData(t, "data.azurerm_virtual_network", "test")
+	r := VirtualNetworkDataSource{}
+
+	name := fmt.Sprintf("acctestvnet-%d", data.RandomInteger)
+
+	data.DataSourceTest(t, []resource.TestStep{
+		{
+			Config: r.basicWithAddressPrefixes(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).Key("name").HasValue(name),
+				check.That(data.ResourceName).Key("location").HasValue(azure.NormalizeLocation(data.Locations.Primary)),
+				check.That(data.ResourceName).Key("dns_servers.0").HasValue("10.0.0.4"),
+				check.That(data.ResourceName).Key("address_space.0").HasValue("10.0.0.0/16"),
+				check.That(data.ResourceName).Key("subnets.0").HasValue("subnet1"),
+			),
+		},
+	})
+}
+
 func TestAccDataSourceVirtualNetwork_peering(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azurerm_virtual_network", "test")
 	r := VirtualNetworkDataSource{}
@@ -81,6 +101,30 @@ resource "azurerm_virtual_network" "test" {
 data "azurerm_virtual_network" "test" {
   resource_group_name = azurerm_resource_group.test.name
   name                = azurerm_virtual_network.test.name
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
+}
+
+func (VirtualNetworkDataSource) basicWithAddressPrefixes(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+resource "azurerm_resource_group" "test" {
+  name     = "acctest%d-n-rg"
+  location = "%s"
+}
+resource "azurerm_virtual_network" "test" {
+  name                = "acctestvnet-%d"
+  address_space       = ["10.0.0.0/16"]
+  location            = "${azurerm_resource_group.test.location}"
+  resource_group_name = "${azurerm_resource_group.test.name}"
+  dns_servers         = ["10.0.0.4"]
+  subnet {
+    name             = "subnet1"
+    address_prefixes = ["10.0.1.0/24", "10.0.2.0/24"]
+  }
+}
+data "azurerm_virtual_network" "test" {
+  resource_group_name = "${azurerm_resource_group.test.name}"
+  name                = "${azurerm_virtual_network.test.name}"
 }
 `, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }
