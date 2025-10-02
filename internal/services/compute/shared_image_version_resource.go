@@ -252,6 +252,7 @@ func resourceSharedImageVersionCreate(d *pluginsdk.ResourceData, meta interface{
 		version.Properties.StorageProfile.Source = &galleryimageversions.GalleryArtifactVersionFullSource{
 			Id: utils.String(v.(string)),
 		}
+
 	}
 
 	if v, ok := d.GetOk("os_disk_snapshot_id"); ok {
@@ -265,8 +266,9 @@ func resourceSharedImageVersionCreate(d *pluginsdk.ResourceData, meta interface{
 	if v, ok := d.GetOk("blob_uri"); ok {
 		version.Properties.StorageProfile.OsDiskImage = &galleryimageversions.GalleryDiskImage{
 			Source: &galleryimageversions.GalleryDiskImageSource{
-				Id:  pointer.To(d.Get("storage_account_id").(string)),
-				Uri: pointer.To(v.(string)),
+				//		Id:  pointer.To(d.Get("storage_account_id").(string)),
+				StorageAccountId: pointer.To(d.Get("storage_account_id").(string)),
+				Uri:              pointer.To(v.(string)),
 			},
 		}
 	}
@@ -402,8 +404,17 @@ func resourceSharedImageVersionRead(d *pluginsdk.ResourceData, meta interface{})
 
 			osDiskSnapShotID := ""
 			storageAccountID := ""
-			if props.StorageProfile.OsDiskImage != nil && props.StorageProfile.OsDiskImage.Source != nil && props.StorageProfile.OsDiskImage.Source.Id != nil {
-				sourceID := *props.StorageProfile.OsDiskImage.Source.Id
+
+			if props.StorageProfile.OsDiskImage != nil && props.StorageProfile.OsDiskImage.Source != nil {
+				sourceID := ""
+				if props.StorageProfile.OsDiskImage.Source.Id != nil {
+					sourceID = *props.StorageProfile.OsDiskImage.Source.Id
+				}
+
+				if props.StorageProfile.OsDiskImage.Source.StorageAccountId != nil {
+					sourceID = *props.StorageProfile.OsDiskImage.Source.StorageAccountId
+				}
+
 				if blobURI == "" {
 					osDiskSnapShotID = sourceID
 				} else {
